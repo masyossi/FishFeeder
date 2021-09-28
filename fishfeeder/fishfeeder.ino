@@ -13,11 +13,14 @@
 #include <WiFiClientSecure.h>
 #include <UniversalTelegramBot.h>   // Universal Telegram Bot Library written by Brian Lough: https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot
 #include <ArduinoJson.h>
+#include "time.h"
 
 
 // Replace with your network credentials
-const char* ssid = "Redmi Note 8 Pro";
-const char* password = "00000000";
+//const char* ssid = "Redmi Note 8 Pro";
+//const char* password = "00000000";
+const char* ssid = "GodBless";
+const char* password = "keepsmile";
 
 // Initialize Telegram BOT
 #define BOTtoken "1349854451:AAGXfih7EcOOadJ_BFASHZZNSHYWEWk4X7k"  // your Bot Token (Get from Botfather)
@@ -50,6 +53,35 @@ int times = 180;
 unsigned long previousMillis = 0;
 unsigned long interval = 30000;
 
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 25200;
+const int   daylightOffset_sec = 0;
+String dayOfWeek[7] = {"Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"};
+String month[12] = {"Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"};
+String datetime = "";
+int count = 0;
+
+void printLocalTime()
+{
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  int current_hour = timeinfo.tm_hour;
+  int current_min = timeinfo.tm_min;
+  int current_sec = timeinfo.tm_min;
+  int current_day = timeinfo.tm_wday;
+  int current_month = timeinfo.tm_mon;
+  int current_days = timeinfo.tm_mday;
+  int current_year = 1900 + (timeinfo.tm_year);
+
+  datetime = dayOfWeek[current_day] + ", "+ current_days + " " + month[current_month] + " " +current_year + " " + current_hour + ":" + current_min + ":" + current_sec;
+  Serial.println(datetime);
+//  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  
+}
+
 // Handle what happens when you receive new messages
 void handleNewMessages(int numNewMessages) {
   Serial.println("handleNewMessages");
@@ -71,8 +103,9 @@ void handleNewMessages(int numNewMessages) {
 
     if (text == "/start") {
       String welcome = "Selamat datang, " + from_name + ".\n";
-      welcome += "Use the following commands to control your outputs.\n\n";
-      welcome += "/makan untuk kasih makan ikan \n";
+      welcome += "Gunakan perintah dibawah ini untuk mendapatkan informasi.\n\n";
+      welcome += "/makan -> perintah untuk kasih makan ikan \n";
+      welcome += "/info -> perintah untuk mengetahui berapa kali ikan makan \n";
       bot.sendMessage(chat_id, welcome, "");
     }
 
@@ -80,13 +113,17 @@ void handleNewMessages(int numNewMessages) {
       bot.sendMessage(chat_id, "kasih makan selesai", "");
       kasihmakan();
     }
+
+    if (text == "/info") {
+      bot.sendMessage(chat_id, "Sejak tgl "+ datetime + " sudah dikasih makan sebanyak "+ (count) +" kali", "");
+    }
   }
 }
 
 void setup() {
     Serial.begin(115200);
     pinMode(pinLed, OUTPUT);
-    digitalWrite(pinLed, HIGH);
+    digitalWrite(pinLed, LOW);
     servo1.attach(servoPin);
 
     // Connect to Wi-Fi
@@ -99,10 +136,15 @@ void setup() {
       delay(1000);
       Serial.println("Connecting to WiFi..");
     }
+    
+    digitalWrite(pinLed, HIGH); //matikan led jika wifi sudah terhubung
     WiFi.setAutoReconnect(true);
     WiFi.persistent(true);
     // Print ESP32 Local IP Address
     Serial.println(WiFi.localIP());
+
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    printLocalTime();
 
     xTaskCreatePinnedToCore(
     timerTask
@@ -200,4 +242,5 @@ void kasihmakan(){
   delay(5000);
   servo1.write(0);
   digitalWrite(pinLed, HIGH);
+  count++;
 }
